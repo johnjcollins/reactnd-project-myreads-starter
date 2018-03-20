@@ -11,7 +11,6 @@ class Search extends Component {
     }
 
     state = {
-        error: null,
         query: '',
         searchResults: []
     }
@@ -23,24 +22,25 @@ class Search extends Component {
         if (query !== '') {
             BooksAPI.search(query)
                 .then((books) => {
-                    this.setState((previous) => {
-                        for (const book of this.props.books) {
-                            let index = books.findIndex(searchResultBook => searchResultBook.id === book.id );
-                            if (index !== -1) {
-                                books[index].shelf = book.shelf;
+                    if (!books.error) {
+                        this.setState((previous) => {
+                            // Check books from search results against existing books list and synchronize shelf on matches
+                            for (const book of this.props.books) {
+                                let index = books.findIndex(searchResultBook => searchResultBook.id === book.id );
+                                if (index !== -1) {
+                                    books[index].shelf = book.shelf;
+                                }
                             }
-                        }
-                        return {
-                            searchResults: books
-                        }
-                    });
-                },
-                (error) => {
-                    this.setState({
-                        error,
-                        searchResults: []
-                    });             
-                })
+                            return {
+                                searchResults: books
+                            }
+                        });
+                    } else {
+                        this.setState({
+                            searchResults: []
+                        });             
+                    }
+                });
         } else {
             this.setState({
                 searchResults: []
@@ -58,28 +58,20 @@ class Search extends Component {
                         books: prevState.searchResults.books
                     }
                     });
+                // Update books list based on changes to shelf on search page
                 this.props.updateBooksList();
-            },
-            (error) => {
-                this.setState({
-                    error
-                })
             }
         );
     }
     
     render() {
-        const { error, query, searchResults} = this.state;
-        if (error) {
-            <div>Error: {error.message}</div>
-        } else {
-            return (
-                <div className="search-books">
-                    <SearchBar query={query} onChangeQuery={this.changeQuery} />
-                    <SearchResults searchResults={searchResults} onChangeShelf={this.changeShelf}/>
-                </div>
-            )
-        }
+        const { query, searchResults} = this.state;
+        return (
+            <div className="search-books">
+                <SearchBar query={query} onChangeQuery={this.changeQuery} />
+                <SearchResults searchResults={searchResults} onChangeShelf={this.changeShelf}/>
+            </div>
+        )
     }
 }
 
