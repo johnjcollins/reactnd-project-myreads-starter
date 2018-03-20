@@ -1,30 +1,86 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { Component } from 'react';
+import PropTypes from 'prop-types';
+import * as BooksAPI from './BooksAPI';
+import SearchBar from './SearchBar';
+import SearchResults from './SearchResults';
 
-function Search(props) {
-    return (
-        <div className="search-books">
-            <div className="search-books-bar">
-                <Link
-                    to='/'
-                    className="close-search">Close</Link>
-                <div className="search-books-input-wrapper">
-                {/*
-                    NOTES: The search from BooksAPI is limited to a particular set of search terms.
-                    You can find these search terms here:
-                    https://github.com/udacity/reactnd-project-myreads-starter/blob/master/SEARCH_TERMS.md
+class Search extends Component {
+    static propTypes = {
+        books: PropTypes.array.isRequired,
+        updateBooksList: PropTypes.func.isRequired
+    }
 
-                    However, remember that the BooksAPI.search method DOES search by title or author. So, don't worry if
-                    you don't find a specific author or title. Every search is limited by search terms.
-                */}
-                    <input type="text" placeholder="Search by title or author"/>
+    state = {
+        error: null,
+        query: '',
+        searchResults: []
+    }
+
+    changeQuery = (query) => {
+        this.setState({
+            query: query
+        });
+        if (query !== '') {
+            BooksAPI.search(query)
+                .then((books) => {
+                    this.setState((previous) => {
+                        for (const book of this.props.books) {
+                            let index = books.findIndex(searchResultBook => searchResultBook.id === book.id );
+                            if (index !== -1) {
+                                books[index].shelf = book.shelf;
+                            }
+                        }
+                        return {
+                            searchResults: books
+                        }
+                    });
+                },
+                (error) => {
+                    this.setState({
+                        error,
+                        searchResults: []
+                    });             
+                })
+        } else {
+            this.setState({
+                searchResults: []
+            });
+        }             
+    }
+
+    changeShelf = (id, newShelf) => {
+        BooksAPI.update(id, newShelf)
+            .then((data) => {
+                this.setState((prevState) => {
+                    const index = prevState.searchResults.findIndex(book => book.id === id);
+                    prevState.searchResults[index].shelf = newShelf;
+                    return {
+                        books: prevState.searchResults.books
+                    }
+                    });
+                this.props.updateBooksList();
+            },
+            (error) => {
+                this.setState({
+                    error
+                })
+            }
+        );
+    }
+    
+    render() {
+        const { error, query, searchResults} = this.state;
+        if (error) {
+            <div>Error: {error.message}</div>
+        } else {
+            return (
+                <div className="search-books">
+                    <SearchBar query={query} onChangeQuery={this.changeQuery} />
+                    <SearchResults searchResults={searchResults} onChangeShelf={this.changeShelf}/>
                 </div>
-            </div>
-            <div className="search-books-results">
-                <ol className="books-grid"></ol>
-            </div>
-        </div>
-    )
+            )
+        }
+    }
 }
 
 export default Search;
